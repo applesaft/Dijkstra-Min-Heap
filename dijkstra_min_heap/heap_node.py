@@ -1,6 +1,6 @@
 class HeapNode:
     """
-    Represents a single node in our binary tree min-heap.
+    Represents a single node in binary tree min-heap
     Each node holds:
     + distance
     + node_id  : which graph node this refers to
@@ -11,12 +11,6 @@ class HeapNode:
     """
 
     def __init__(self, distance, node_id):
-        """
-        When we first create a node it has no connections
-        to any other node in the tree yet — those get set
-        when we insert it into the MinHeap.
-        """
-
         self.distance = distance
         self.node_id = node_id
         self.left = None
