@@ -1,26 +1,27 @@
-from heap_node import *
+"""
+Implementation of a pointer-based binary min-heap from scratch
+This binary heap is used to find which one of the next vertex to visit next per Dijkstra's Algorithm
+    Scanning every node linearly has complexity O(n),
+    The heap has complexity O(log n)
+"""
+from min_heap_node import HeapNode
 
 class MinHeap:
-    """
-    A min-heap implemented as a proper binary tree using HeapNode objects
-    Invariant,
-        parent.distance <= children.distance
-        (the node with the smallest distance is always at the root)
-    """
 
     def __init__(self):
         self.root = None
-        self.size = 0 # Size of Tree
+        self.size = 0 
 
-    def insert_node(self, distance, node_id):
+    def insert_node(self, cost, node_id):
         """
-        Insert a new node into the heap:
-        + Preserve shape: place the new node in the next available position, left to right
-                          (We find this position using the binary representation of (size + 1))
-        + Satisfying invariant
+        Inserting a new node into the heap:
+            - Preserve shape: place the new node in the next available position, left to right
+                            (We find this position using the binary representation of (size + 1))
+            - Satisfying invariant, parent.cost <= children.cost
+                            (the node with the smallest distance is always at the root)
         """
 
-        new_node = HeapNode(distance, node_id)
+        new_node = HeapNode(cost, node_id)
     
         # Use binary representation of (size + 1) to find the exact path to the insertion position.
         binary = str(bin(self.size + 1))[3:]
@@ -47,95 +48,99 @@ class MinHeap:
                 else:
                     current = current.right
 
-            i = i + 1
+            i += 1
 
-        self.size = self.size + 1
+        self.size += 1
         self.sort_up(new_node)
 
 
     def sort_up(self, node):
         """
         Restore the heap order after insertion 
-        We compare the node with its parent and swap values if the node's distance is smaller than its parent's.
-        We keep swapping (values) until either:
-            + The node reaches the root (no more parent)
-            + The invariant is satisfied
+        We compare the node with its parent and swap values if the node's cost is smaller than its parent's.
+        We keep swapping (values) until either: The node reaches the root (no more parent) or The invariant is satisfied
         """
 
         current = node
         while current.parent is not None:
-            if current.distance < current.parent.distance:
-                current.distance, current.parent.distance = (current.parent.distance, current.distance)
-
-                current.node_id, current.parent.node_id = (current.parent.node_id, current.node_id)
+            if current.cost < current.parent.cost:
+                current.cost, current.parent.cost = current.parent.cost, current.cost
+                current.node_id, current.parent.node_id = current.parent.node_id, current.node_id
                 current = current.parent
             else:
                 break
 
-    # helper function
-    def delete_node(self):
-        # find last node
-        binary = str(bin(self.size))[3:]
-
+    def _find_last_node(self):
+        """
+        Uses the same binary path trick as insert_node, but reads
+        bin(size) instead of bin(size + 1) because we want the current
+        last node
+        """
+        binary = bin(self.size)[3:]
+ 
         current = self.root
-        i = 0
-    
-        while i < len(binary):  
-            character = binary[i]
-        
-            if character == '0':
+        for bit in binary:
+            if bit == '0':
                 current = current.left
             else:
                 current = current.right
-            i = i + 1
-
+ 
         return current
-
+    
     def sort_down(self, node):
         """
-        Restore heap order after deletion 
-        compare the node with its smallest child
-        keep swapping until either:
-        + The node has no children (we reached a leaf)
-        + Invariant is satisfied (parent <= children)
+        Restore heap order after extraction.
+        Compare the node with its smallest child and swap their data if the child's cost is smaller. Keep swapping downward until either:
+            - The node has no children (reached a leaf)
+            - The invariant is satisfied (node cost <= both children)
         """
-        # current should be new root node
         current = node
         while True:
             smallest = current
-            if (current.left is not None and current.left.distance < smallest.distance):
+ 
+            if current.left is not None and current.left.cost < smallest.cost:
                 smallest = current.left
-
-            if (current.right is not None and current.right.distance < smallest.distance):
+ 
+            if current.right is not None and current.right.cost < smallest.cost:
                 smallest = current.right
-
+ 
             if smallest == current:
                 break
-
-            current.distance, smallest.distance = (smallest.distance, current.distance)
-            current.node_id, smallest.node_id = (smallest.node_id, current.node_id)
+ 
+            current.cost,    smallest.cost    = smallest.cost,    current.cost
+            current.node_id, smallest.node_id = smallest.node_id, current.node_id
             current = smallest
 
-    def extract_min(self): # remove and return the root node
-        if self.root is None:
-            return None 
-
-        min_distance = self.root.distance
-        min_node_id = self.root.node_id
-
-        last_node = self.delete_node()
-        self.root.distance = last_node.distance
-        self.root.node_id = last_node.node_id
-
-        # removing the last node from the tree
-        if last_node.parent.right == last_node:
-            last_node.parent.right = None
-        else:
-            last_node.parent.left = None
-
-        self.size = self.size - 1
-        self.sort_down(self.root)
-        return (min_distance, min_node_id)
+    # use by dijkstra.py
+    def is_empty(self):
+        return self.root is None or self.size == 0
     
-    def is_empty(self): # checks if heap is empty
-        return self.root is None
+    def extract_min(self):
+        if self.root is None:
+            return None
+
+        min_cost = self.root.cost   # Save the root's data
+        min_id   = self.root.node_id
+
+        # Copying the last node's data into the root
+        # If only one node left
+        if self.size == 1:
+            self.root = None
+            self.size = 0
+            return (min_cost, min_id)
+ 
+        # Find the last node and copy its data into the root
+        last_node = self._find_last_node()
+        self.root.cost    = last_node.cost
+        self.root.node_id = last_node.node_id
+ 
+        # delete the last node from its parent
+        if last_node.parent.left == last_node:
+            last_node.parent.left = None
+        else:
+            last_node.parent.right = None
+ 
+        # Restore invariant
+        self.size -= 1
+        self.sort_down(self.root)
+        return (min_cost, min_id)
